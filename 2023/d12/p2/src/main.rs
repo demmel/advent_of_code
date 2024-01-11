@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -10,6 +11,7 @@ fn main() {
 
     for line in reader.lines() {
         let line = line.unwrap();
+        println!("{line}");
 
         let (record, checksums) = line.split_once(" ").unwrap();
         let checksums: Vec<_> = checksums
@@ -17,13 +19,25 @@ fn main() {
             .map(|c| c.parse::<usize>().unwrap())
             .collect();
 
-        sum += count_arrangements(record, &checksums);
+        let record = [record, record, record, record, record].join("?");
+        let checksums = checksums.repeat(5);
+
+        let mut cache = HashMap::new();
+        sum += count_arrangements(&mut cache, &record, &checksums);
     }
 
     println!("{sum}");
 }
 
-fn count_arrangements(record: &str, checksums: &[usize]) -> usize {
+fn count_arrangements<'a>(
+    cache: &mut HashMap<(&'a str, &'a [usize]), usize>,
+    record: &'a str,
+    checksums: &'a [usize],
+) -> usize {
+    if cache.contains_key(&(record, checksums)) {
+        return cache[&(record, checksums)];
+    }
+
     if checksums.is_empty() {
         return if record.chars().filter(|c| *c == '#').count() == 0 {
             1
@@ -63,11 +77,13 @@ fn count_arrangements(record: &str, checksums: &[usize]) -> usize {
             if c == '#' {
                 continue 'outer;
             }
-            sum += count_arrangements(&record[(i + checksum + 1)..], &checksums[1..]);
+            sum += count_arrangements(cache, &record[(i + checksum + 1)..], &checksums[1..]);
         } else {
-            sum += count_arrangements("", &checksums[1..]);
+            sum += count_arrangements(cache, "", &checksums[1..]);
         }
     }
+
+    cache.insert((record, checksums), sum);
 
     sum
 }
